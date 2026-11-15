@@ -1,0 +1,5 @@
+# Stage 3 only: local embedding generation. PyTorch is already present in this environment.
+sentence-transformers>=5.3,<6
+einops>=0.8,<1
+# Later Transformers 4.x releases require PyTorch 2.1+; this environment has PyTorch 2.0.1.
+transformers==4.46.3

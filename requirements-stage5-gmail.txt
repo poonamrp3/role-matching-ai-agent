@@ -1,0 +1,8 @@
+# Gmail adapter dependencies. Install only when ready to connect a test Gmail account.
+google-api-python-client>=2.0,<3
+# 1.0 is sufficient for the installed-flow API and remains compatible with the
+# TensorBoard version already present in the current Conda environment.
+google-auth-oauthlib==1.0.0
+cryptography>=42,<47
+pypdf>=5,<7
+python-docx>=1.1,<2

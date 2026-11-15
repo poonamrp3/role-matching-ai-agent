@@ -1,0 +1,42 @@
+[
+  {
+    "submission_id": "demo-submission-005",
+    "received_at": "2026-11-14T08:45:00Z",
+    "sender": "anika.research@example.invalid",
+    "subject": "Application — Applied AI Research Volunteer",
+    "email_body": "I am interested in contributing to applied AI research. My recent work includes evaluating retrieval-augmented generation systems and documenting experiment results.",
+    "attachments": [{"filename": "anika_resume.txt", "mime_type": "text/plain", "text": "Anika Shah\nExperience: Built Python evaluation pipelines for RAG prototypes; compared retrieval quality; summarized research findings for non-technical stakeholders.\nSkills: Python, information retrieval, prompt evaluation, technical writing, data analysis."}]
+  },
+  {
+    "submission_id": "demo-submission-004",
+    "received_at": "2026-11-13T15:20:00Z",
+    "sender": "leon.data@example.invalid",
+    "subject": "Application — Data and Automation Contributor",
+    "email_body": "Please consider my application for data-focused volunteer work. I enjoy turning messy operational data into reliable reporting workflows.",
+    "attachments": [{"filename": "leon_resume.txt", "mime_type": "text/plain", "text": "Leon Martin\nExperience: Cleaned spreadsheet and CRM exports, created SQL reports, automated recurring data-quality checks, and presented dashboards to programme teams.\nSkills: SQL, Python, data cleaning, dashboards, stakeholder communication."}]
+  },
+  {
+    "submission_id": "demo-submission-003",
+    "received_at": "2026-11-12T11:10:00Z",
+    "sender": "sofia.design@example.invalid",
+    "subject": "Application — Product Design Support",
+    "email_body": "I would like to help teams make digital services easier to use. I have worked with researchers, engineers, and community members.",
+    "attachments": [{"filename": "sofia_resume.txt", "mime_type": "text/plain", "text": "Sofia Chen\nExperience: Planned user interviews, synthesized qualitative findings, built Figma prototypes, and tested accessible interfaces for a public-service mobile application.\nSkills: user research, UX design, Figma, usability testing, accessibility, facilitation."}]
+  },
+  {
+    "submission_id": "demo-submission-002",
+    "received_at": "2026-11-11T09:35:00Z",
+    "sender": "marco.engineering@example.invalid",
+    "subject": "Application — Software Engineering Volunteer",
+    "email_body": "I am interested in supporting a mission-driven software team. I am most comfortable with backend services and practical deployment work.",
+    "attachments": [{"filename": "marco_resume.txt", "mime_type": "text/plain", "text": "Marco Diaz\nExperience: Developed REST APIs in Python, containerized services with Docker, wrote automated tests, and deployed applications to cloud infrastructure.\nSkills: Python, REST APIs, Docker, testing, cloud deployment, Git."}]
+  },
+  {
+    "submission_id": "demo-submission-001",
+    "received_at": "2026-11-10T14:00:00Z",
+    "sender": "nora.community@example.invalid",
+    "subject": "Application — Community Communications Volunteer",
+    "email_body": "I would like to support outreach and clear communication for community programmes.",
+    "attachments": [{"filename": "nora_resume.txt", "mime_type": "text/plain", "text": "Nora Patel\nExperience: Wrote newsletters, planned social-media campaigns, coordinated online events, and interviewed volunteers for impact stories.\nSkills: communications, copywriting, social media, event coordination, interviewing, content planning."}]
+  }
+]

@@ -1,0 +1,19 @@
+# macOS Finder metadata
+.DS_Store
+__pycache__/
+*.py[cod]
+
+# OAuth clients, access tokens, and local secrets must never enter source control.
+client_secret*.json
+credentials*.json
+token*.json
+.env
+data/runtime/
+
+# Local vector-store database; regenerate with scripts/load_esco_vectors_to_qdrant.py.
+data/qdrant/
+
+# ESCO source and generated artifacts; regenerate through the documented pipeline.
+data/raw/
+data/processed/
+data/embeddings/
