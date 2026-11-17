@@ -80,9 +80,9 @@ candidate email/resume
   → human reviewer
 ```
 
-## Evaluation before Gmail integration
+## Evaluation before live candidate processing
 
-Start with synthetic candidate profiles. Each test should assert that:
+Use a dedicated applications mailbox with consented test submissions. Each test should assert that:
 
 - an AI/RAG profile retrieves AI/data-related occupations;
 - role title mismatch does not prevent a relevant semantic match;

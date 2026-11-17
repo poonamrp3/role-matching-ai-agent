@@ -12,7 +12,8 @@ import json
 import os
 import sqlite3
 import time
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
@@ -48,6 +49,14 @@ class GmailConnectionRequired(RuntimeError):
     """Raised when the user has not completed the separate Gmail connection step."""
 
 
+@dataclass(frozen=True)
+class GmailCredentialLoadResult:
+    """In-memory credential result for a tool call; never serialize or log ``credentials``."""
+
+    credentials: Credentials
+    access_token_refreshed: bool
+
+
 class _HTMLTextExtractor(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
@@ -79,7 +88,14 @@ class GmailCredentialStore:
         self._cipher = Fernet(self._encryption_key())
         self._initialize_database()
 
-    def connect(self, client_secrets_path: Path) -> None:
+    def connect(self, client_secrets_path: Path, timeout_seconds: int = 120) -> None:
+        """Run one browser-based consent attempt and save its encrypted credential.
+
+        A finite timeout means an abandoned consent tab cannot leave the local application in an
+        apparently permanent "authorizing" state. A later recruiter request can safely start a
+        fresh attempt.
+        """
+
         flow = InstalledAppFlow.from_client_secrets_file(
             str(client_secrets_path),
             scopes=[GMAIL_READONLY_SCOPE],
@@ -89,10 +105,46 @@ class GmailCredentialStore:
             open_browser=True,
             authorization_prompt_message="Open this URL in a browser to connect Gmail: {url}",
             success_message="Gmail connected. You may close this browser tab.",
+            timeout_seconds=timeout_seconds,
         )
         self._save(credentials)
 
+    def has_stored_connection(self) -> bool:
+        """Return whether this mailbox has a stored credential record.
+
+        This deliberately checks only for the encrypted SQLite row. It does not decrypt,
+        refresh, or expose OAuth credentials merely to render a UI status indicator.
+        """
+
+        with self._database() as database:
+            row = database.execute(
+                "SELECT 1 FROM gmail_tokens WHERE connection_id = ?",
+                (self.connection_id,),
+            ).fetchone()
+        return row is not None
+
+    def delete_connection(self) -> bool:
+        """Remove the encrypted local credential record for this mailbox.
+
+        Google consent is not revoked by this local operation; it removes the application's
+        locally stored ability to use that consent. A subsequent workflow run must reconnect.
+        """
+
+        with self._database() as database:
+            cursor = database.execute(
+                "DELETE FROM gmail_tokens WHERE connection_id = ?",
+                (self.connection_id,),
+            )
+        return cursor.rowcount > 0
+
     def load(self) -> Credentials:
+        """Load valid credentials, refreshing and re-encrypting them if necessary."""
+
+        return self.load_with_status().credentials
+
+    def load_with_status(self) -> GmailCredentialLoadResult:
+        """Load credentials and report only whether this call refreshed the access token."""
+
         with self._database() as database:
             row = database.execute(
                 "SELECT encrypted_token FROM gmail_tokens WHERE connection_id = ?",
@@ -110,12 +162,17 @@ class GmailCredentialStore:
                 "GMAIL_TOKEN_ENCRYPTION_KEY is configured, or reconnect Gmail."
             ) from error
         credentials = Credentials.from_authorized_user_info(json.loads(serialized), [GMAIL_READONLY_SCOPE])
+        access_token_refreshed = False
         if credentials.expired and credentials.refresh_token:
             credentials.refresh(Request())
             self._save(credentials)
+            access_token_refreshed = True
         if not credentials.valid:
             raise GmailConnectionRequired("Gmail connection is no longer valid. Reconnect Gmail.")
-        return credentials
+        return GmailCredentialLoadResult(
+            credentials=credentials,
+            access_token_refreshed=access_token_refreshed,
+        )
 
     def _save(self, credentials: Credentials) -> None:
         encrypted_token = self._cipher.encrypt(credentials.to_json().encode("utf-8"))
@@ -181,13 +238,31 @@ class GmailCandidateSubmissionTool:
         self.label = label.strip()
         self.credential_store = credential_store or GmailCredentialStore(connection_id=connection_id)
 
-    def fetch_latest_submissions(self, limit: int = MAX_SUBMISSIONS_PER_REQUEST) -> list[SubmissionReference]:
+    def fetch_latest_submissions(
+        self,
+        limit: int = MAX_SUBMISSIONS_PER_REQUEST,
+        received_after: date | None = None,
+        received_before: date | None = None,
+        require_attachment: bool | None = None,
+    ) -> list[SubmissionReference]:
         if not 1 <= limit <= MAX_SUBMISSIONS_PER_REQUEST:
             raise ValueError(f"limit must be between 1 and {MAX_SUBMISSIONS_PER_REQUEST}")
         service = self._service()
-        # The label is fixed at tool construction. User-provided prompts never become Gmail queries.
+        # The label and filter grammar are constructed from validated fields; raw recruiter text
+        # never becomes a Gmail query.
+        query_terms = [f'label:"{self.label}"']
+        if received_after:
+            # Gmail's `after` is exclusive, so subtract one day for an inclusive date range.
+            query_terms.append(f"after:{(received_after - timedelta(days=1)).strftime('%Y/%m/%d')}")
+        if received_before:
+            # Gmail's `before` is exclusive, so add one day for an inclusive date range.
+            query_terms.append(f"before:{(received_before + timedelta(days=1)).strftime('%Y/%m/%d')}")
+        if require_attachment is True:
+            query_terms.append("has:attachment")
+        elif require_attachment is False:
+            query_terms.append("-has:attachment")
         response = service.users().messages().list(
-            userId="me", q=f'label:"{self.label}"', maxResults=limit
+            userId="me", q=" ".join(query_terms), maxResults=limit
         ).execute()
         references: list[SubmissionReference] = []
         for item in response.get("messages", []):

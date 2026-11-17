@@ -1,0 +1,6 @@
+# Query-processing stage: local Gemini Web2API client and schema validation.
+# This endpoint is used only for recruiter-command parsing during the local prototype.
+openai>=1.0,<3
+python-dotenv>=1.0,<2
+pydantic>=2.0,<3
+langgraph>=1.0,<2

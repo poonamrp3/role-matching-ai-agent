@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root { font-family: Manrope, Arial, sans-serif; color: #e8f0f6; background: #09111d; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; background: radial-gradient(circle at 80% -20%, #18334d 0, transparent 34rem), #09111d; }
+button, textarea { font: inherit; }
+.shell { width: min(1000px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 72px; }
+.topbar, .header-actions, .panel-heading, .control-footer, .candidate-header, .assistant-response-header { display: flex; align-items: center; }
+.topbar, .header-actions, .panel-heading, .control-footer, .candidate-header, .assistant-response-header { justify-content: space-between; }
+h1, h2, h3, h4, h5, p { margin: 0; }
+h1 { font-size: 20px; letter-spacing: -.7px; }
+h2 { margin-top: 7px; font-size: 25px; letter-spacing: -1px; }
+h3 { font-size: 18px; letter-spacing: -.6px; }
+h4 { font-size: 16px; line-height: 1.45; }
+h5 { font-size: 16px; text-transform: capitalize; }
+.eyebrow { color: #90a4b7; font: 500 10px 'DM Mono', monospace; letter-spacing: 1.2px; }
+.teal { color: #65e3cb; }
+.header-actions { gap: 15px; }
+.text-button { border: 0; background: transparent; color: #65e3cb; cursor: pointer; font-size: 12px; }
+.system-card { position: relative; padding: 15px 42px 15px 16px; background: #101d2d; border: 1px solid #294158; border-radius: 13px; }
+.system-card strong { display: block; margin-top: 6px; font-size: 12px; }
+.status-dot { position: absolute; top: 21px; right: 18px; width: 9px; height: 9px; border-radius: 50%; background: #526575; }
+.status-dot.active { background: #65e3cb; box-shadow: 0 0 0 5px #1f4a4c; }
+.conversation-panel, .composer { border: 1px solid #294158; background: rgba(14, 27, 42, .88); border-radius: 18px; }
+.conversation-panel { min-height: 450px; margin-top: 35px; padding: 25px; }
+.conversation-heading { display: flex; align-items: center; justify-content: space-between; padding-bottom: 20px; border-bottom: 1px solid #294158; }
+.review-badge { color: #f4d99c; border: 1px solid #624f2b; border-radius: 999px; padding: 8px 11px; font: 500 10px 'DM Mono', monospace; }
+.conversation-empty { display: grid; place-items: center; min-height: 320px; text-align: center; }
+.empty-icon { margin-bottom: 10px; color: #65e3cb; font-size: 28px; }.conversation-empty p { max-width: 390px; margin-top: 8px; color: #91a5b5; font-size: 13px; line-height: 1.6; }
+.message-list { display: grid; gap: 18px; margin-top: 22px; }
+.message { border-radius: 13px; }
+.recruiter-message { max-width: 76%; justify-self: end; padding: 15px 17px; color: #e4f1f7; border: 1px solid #33576c; background: #173246; }
+.recruiter-message .eyebrow { margin-bottom: 7px; color: #94e5d8; }.recruiter-message p:last-child { font-size: 13px; line-height: 1.6; }
+.assistant-message { padding: 0; overflow: hidden; border: 1px solid #294158; background: #0b1724; }
+.assistant-response-header { gap: 16px; padding: 17px 18px; background: #102031; }.assistant-response-header h3 { margin-top: 5px; }
+.connection-status { display: inline-flex; align-items: center; color: #d59b9b; font-size: 11px; white-space: nowrap; }.connection-status i { width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: #d46e71; }.connection-status.okay { color: #b8dace; }.connection-status.okay i { background: #65e3cb; }.connection-status.neutral { color: #b8c9d5; }.connection-status.neutral i { background: #95aab9; }
+.warning, .error-message { margin: 16px 18px; padding: 12px; color: #ffcbcb; border: 1px solid #6b3e49; border-radius: 9px; background: #311c26; font-size: 13px; }.error-message { margin: 0; }
+.clarification-message { margin: 16px 18px; padding: 14px; color: #c9e3e0; border: 1px solid #315d68; border-radius: 9px; background: #102831; font-size: 13px; line-height: 1.6; }
+.assistant-message-text { margin: 18px; padding: 14px; color: #c9dce8; border: 1px solid #31546b; border-radius: 9px; background: #0d1e2d; font-size: 13px; line-height: 1.6; }
+.candidate-card { margin: 16px 18px; overflow: hidden; border: 1px solid #294158; border-radius: 13px; background: #0b1724; }.candidate-header { gap: 18px; padding: 18px; background: #102031; }.candidate-header .eyebrow { margin-bottom: 5px; }.timestamp { margin-top: 5px; color: #90a4b7; font-size: 12px; }.submission-id { color: #76ddcd; font: 11px 'DM Mono', monospace; }
+.candidate-facts { display: flex; flex-wrap: wrap; gap: 8px; padding: 11px 18px; color: #a9bdcb; border-bottom: 1px solid #294158; background: #0c1a29; font-size: 11px; }.candidate-facts span { padding-right: 10px; border-right: 1px solid #31485c; }.candidate-facts span:last-child { padding-right: 0; border-right: 0; }
+.role-list { padding: 5px 18px; }.role-row { display: flex; gap: 13px; padding: 18px 0; border-bottom: 1px solid #23394d; }.role-row:last-child { border-bottom: 0; }.rank { padding-top: 3px; color: #65e3cb; font: 11px 'DM Mono', monospace; }.role-copy { min-width: 0; flex: 1; }.role-copy p { margin-top: 7px; color: #a5b7c5; font-size: 12px; line-height: 1.6; }.skill-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }.skill-list span { padding: 4px 7px; color: #b9d4e5; border: 1px solid #314f65; border-radius: 99px; font-size: 10px; }
+.technical-details { margin-top: 13px; }.technical-details summary { width: fit-content; color: #75d9ca; cursor: pointer; font: 500 10px 'DM Mono', monospace; }.technical-details summary:hover { color: #a8f2e5; }.technical-details dl { display: grid; gap: 7px; margin: 9px 0 0; padding: 10px; border: 1px solid #284358; border-radius: 8px; background: #0a1520; }.technical-details dl div { display: flex; justify-content: space-between; gap: 16px; }.technical-details dt, .technical-details dd { margin: 0; font: 10px 'DM Mono', monospace; }.technical-details dt { color: #8fa4b5; }.technical-details dd { color: #cfdfeb; text-align: right; }
+.follow-up-response { padding: 20px 18px; }.follow-up-response > p:first-child { color: #d5e3ec; font-size: 13px; line-height: 1.65; }.follow-up-role { display: grid; gap: 5px; margin-top: 16px; padding: 12px; border: 1px solid #31536a; border-radius: 9px; background: #0d1d2c; }.follow-up-role span { color: #91a7b8; font: 10px 'DM Mono', monospace; text-transform: uppercase; }.follow-up-role strong { color: #79e4d4; font-size: 15px; text-transform: capitalize; }.follow-up-skills { margin-top: 13px; }.evidence-note { margin-top: 15px; padding-top: 13px; color: #9eb3c1; border-top: 1px solid #294158; font-size: 11px; line-height: 1.55; }
+.candidate-card footer { padding: 13px 18px; color: #9eb1c0; border-top: 1px solid #294158; background: #0e1b2b; font-size: 11px; line-height: 1.5; }.thinking-message { display: flex; align-items: center; gap: 8px; margin-top: 20px; color: #a8c4d3; font-size: 12px; }.spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #345462; border-top-color: #65e3cb; border-radius: 50%; animation: spin .7s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
+.composer { margin-top: 18px; padding: 22px; }.composer textarea { width: 100%; min-height: 93px; resize: vertical; margin: 18px 0 14px; padding: 15px; color: #e8f0f6; border: 1px solid #334e67; border-radius: 10px; outline: none; background: #091521; line-height: 1.55; }.composer textarea:focus { border-color: #65e3cb; }.composer textarea::placeholder { color: #607688; }.control-footer p { max-width: 570px; color: #8ba0b2; font-size: 12px; line-height: 1.6; }.control-footer code { color: #c4d8e8; }.primary-button { border: 0; border-radius: 10px; padding: 13px 17px; color: #06131d; background: #65e3cb; font-size: 13px; font-weight: 800; cursor: pointer; }.primary-button:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 680px) { .shell { width: min(100% - 24px, 1000px); padding-top: 18px; }.topbar, .header-actions, .panel-heading, .control-footer, .conversation-heading, .assistant-response-header { align-items: flex-start; flex-direction: column; }.topbar, .header-actions { gap: 14px; }.system-card { width: 100%; }.conversation-panel { margin-top: 24px; padding: 17px; }.recruiter-message { max-width: 92%; }.assistant-response-header { gap: 10px; }.candidate-card { margin: 14px 0; }.candidate-header { align-items: flex-start; flex-direction: column; }.control-footer { gap: 15px; }.review-badge { margin-top: 10px; }.technical-details dl div { align-items: flex-start; flex-direction: column; gap: 4px; }.technical-details dd { text-align: left; } }

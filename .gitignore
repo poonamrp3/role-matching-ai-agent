@@ -17,3 +17,11 @@ data/qdrant/
 data/raw/
 data/processed/
 data/embeddings/
+
+# Local Vue build artifacts.
+frontend/node_modules/
+frontend/dist/
+
+# Generated presentation previews and interview-slide exports are local deliverables, not source.
+.presentation-build/
+output/

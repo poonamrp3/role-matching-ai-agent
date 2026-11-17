@@ -201,10 +201,9 @@ grounded explanation. A future chat UI is optional and does not control the work
 
 ## Stage 5.1 — Candidate-submission tool boundary
 
-The first executable query-pipeline component is a provider-independent
-`CandidateSubmissionTool`, tested with five synthetic submissions. It exposes a bounded listing
-operation and a separate extraction operation. This proves the data-access boundary before
-introducing personal candidate data, Gmail OAuth, or an LLM.
+The first query-pipeline component is a provider-independent `CandidateSubmissionTool` contract.
+It exposes a bounded listing operation and a separate extraction operation. This establishes the
+data-access boundary before workflow orchestration or LLM processing.
 
 A future Gmail adapter will implement the same contract, so LangGraph will not need to know
 whether the current source is a local fixture or Gmail.

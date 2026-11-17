@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Start the one-time local Gmail OAuth connection for the representative demo."""
+"""Start the one-time local Gmail OAuth connection for the representative system."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from role_matching.tools.gmail_candidate_submissions import GmailCredentialStore
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--client-secrets", type=Path, required=True, help="Downloaded Google OAuth desktop-client JSON")
+    # Preserve the identifier of the connection already stored by the initial local setup.
     parser.add_argument("--connection-id", default="demo-applications-mailbox")
     args = parser.parse_args()
     if not args.client_secrets.is_file():

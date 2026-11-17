@@ -39,8 +39,16 @@ applications-only mailbox—not a personal mailbox.
    ```
 
 6. Create a Gmail label such as `CandidateSubmissions` in a dedicated test account and add up to
-   five test messages with `.txt`, `.pdf`, or `.docx` résumés.
-7. Start the connection, replacing the path with the downloaded OAuth client JSON:
+   candidate-submission messages with `.txt`, `.pdf`, or `.docx` résumés.
+7. For the UI connection button, add the downloaded OAuth client path to the uncommitted local
+   `.env` file:
+
+   ```ini
+   GMAIL_OAUTH_CLIENT_SECRETS_PATH=/absolute/path/to/client_secret.json
+   ```
+
+   Selecting **Connect Gmail** in the local UI opens Google consent in the browser and saves the
+   resulting encrypted credential to SQLite. The terminal route remains available for debugging:
 
    ```bash
    python scripts/connect_gmail.py --client-secrets /absolute/path/to/client_secret.json
@@ -50,11 +58,8 @@ applications-only mailbox—not a personal mailbox.
    the environment-supplied Fernet key and stored as ciphertext in
    `data/runtime/gmail_tokens.db`; no plaintext token file is written to the project.
 
-8. Demonstrate the bounded tool:
-
-   ```bash
-   python scripts/demo_gmail_candidate_tool.py --label CandidateSubmissions
-   ```
+8. The future workflow/API will call `GmailCandidateSubmissionTool` with this label and a maximum
+   of five messages. It will not accept an arbitrary Gmail search query from a user prompt.
 
 ## Current guardrails
 
