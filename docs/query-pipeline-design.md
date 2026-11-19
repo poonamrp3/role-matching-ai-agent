@@ -2,90 +2,83 @@
 
 ## Decision
 
-LangGraph is the application-level orchestration layer. A chat UI, including OpenWebUI, may be
-connected later as an optional client, but it does not decide tool order, data scope, or final
-validation.
+LangGraph is the application-level orchestration layer. The Vue interface is a client of the
+workflow; it does not decide tool order, mailbox scope, retrieval limits, or the final response
+shape.
 
 ```text
-Optional UI / API request
-          |
-          v
-      LangGraph workflow
-          |
-          +-- Gmail retrieval (later, constrained)
-          +-- candidate-profile extraction and validation
-          +-- Nomic query embedding
-          +-- Qdrant role retrieval
-          +-- deterministic evidence ranking
-          +-- constrained LLM explanation
-          +-- human-review response
+Recruiter request
+  → input guardrails and query processing
+  → Gmail connection check or secure OAuth authorization
+  → bounded Gmail retrieval
+  → candidate-text extraction
+  → local Nomic candidate embedding
+  → Qdrant active-role retrieval
+  → LLM response planning from safe retrieval evidence
+  → deterministic result formatting
+  → recruiter-facing response for human review
 ```
 
-## Why not let a chat UI orchestrate the workflow?
+## Why LangGraph rather than a chat UI
 
-OpenWebUI can expose tools and function schemas, but it is primarily a user interface. The
-candidate-to-role use case needs a backend workflow that is explicit, testable, and able to
-enforce non-negotiable rules regardless of prompt wording.
+A chat UI can collect prompts and display results, but it should not be responsible for deciding
+which systems can be accessed or in what order. The candidate-to-role workflow needs an explicit,
+inspectable backend flow that enforces Gmail scope, retrieval limits, validation, and privacy
+boundaries regardless of prompt wording.
 
-LangGraph does not make the model intrinsically smarter or faster. It makes control flow visible
-and reliable: deterministic nodes can run before or after LLM nodes, failures can be handled,
-and each state transition can be inspected.
+LangGraph makes these transitions visible and lets deterministic nodes run before or after LLM
+nodes. The LLM does not receive Gmail credentials, raw candidate text, candidate vectors, or
+unrestricted Qdrant payloads.
 
-## Graph state
+## Shared workflow state
 
 ```text
-request_id
-email_references             # IDs only; do not put raw email data in logs
-candidate_text
-candidate_profile            # schema-validated structured data
-candidate_query_text
-candidate_vector
-retrieved_roles
-ranked_role_matches
-grounded_explanation
-validation_errors
-audit_events
+raw_prompt
+query_intent
+match_request
+gmail_connection_ok
+submission_references       # message ID, subject, and received time only
+candidate_documents         # process memory only; never returned by the API
+candidate_vectors           # process memory only; never returned by the API
+role_matches
+response_plan
+formatted_results
+workflow_events
 ```
 
 ## Nodes and responsibilities
 
-| Node | Type | Responsibility | Important guardrail |
+| Node | Type | Responsibility | Key boundary |
 |---|---|---|---|
-| `fetch_submissions` | Deterministic service | Fetch at most five approved Gmail submissions | Fixed label/query and hard limit; no whole-mailbox access. |
-| `extract_candidate_text` | Deterministic service | Extract approved email and attachment text | Treat all email text as untrusted data. |
-| `build_candidate_profile` | LLM + schema validation | Extract skills, responsibilities, projects, and experience | Missing facts remain unknown; exclude protected attributes. |
-| `build_query_text` | Deterministic | Construct Nomic `search_query:` input | Prior job title is only one signal, not the query. |
-| `retrieve_roles` | Deterministic service | Query Qdrant for top K ESCO role vectors | Retrieval is limited to the known index. |
-| `rank_evidence` | Deterministic | Combine semantic retrieval with skill coverage | Ranking score is not a hiring probability. |
-| `explain_matches` | Constrained LLM | Explain top matches and unverified gaps | May refer only to retrieved roles and source evidence. |
-| `validate_response` | Deterministic | Check IDs, schema, score bounds, and citations | Cannot recommend a role that was not retrieved. |
-| `human_review` | Human | Review output before an employment decision | System never makes a hiring decision. |
+| `query_processing` | LLM + schema validation | Converts the recruiter prompt into a bounded `MatchRequest` | Prompt injection and unsupported actions are stopped before tool access. |
+| `gmail_connection` | Deterministic service | Loads and refreshes the encrypted local Gmail credential | If no connection exists, the API starts secure browser authorization and returns a natural-language response. |
+| `gmail_retrieval` | Deterministic service | Retrieves up to five references from the fixed submissions label | Date and attachment filters come only from validated request fields. |
+| `candidate_text_extraction` | Deterministic service | Extracts approved email and supported attachment text | Raw text stays in backend memory. |
+| `candidate_embedding` | Deterministic service | Creates a local Nomic `search_query` vector | The same embedding model and normalization policy are used as the role index. |
+| `role_retrieval` | Deterministic service | Searches active ESCO role vectors in Qdrant | Cosine similarity ranks retrieval results; it is not a hiring score. |
+| `response_planning` | LLM + schema validation | Chooses which safe fields to show for the recruiter request | Receives only safe role titles, field availability, and the validated request. |
+| `result_formatting` | Deterministic service | Renders retrieved data according to the validated response plan | Cannot invent roles, skills, candidate facts, or scores. |
 
-## Deliberate tool policy
+## Tool policy
 
-The LLM must not freely choose every tool. Gmail access, embedding, vector search, ranking, and
-validation are graph-controlled nodes. The LLM is used only where language understanding adds
-value: extracting a profile from unstructured text and producing a grounded explanation after
-retrieval.
+The LLM does not freely select tools. Gmail access, embedding, vector search, and output
+formatting are graph-controlled operations. The first LLM call interprets the recruiter request;
+the second LLM call plans presentation using safe post-retrieval evidence only.
 
 ## Query-time sequence
 
 ```text
-candidate email/resume
-  → validated candidate profile
-  → Nomic search_query vector
-  → Qdrant top 10 ESCO roles
-  → deterministic skill/evidence ranking
-  → constrained explanation for top 3–5 roles
+candidate email and supported attachment
+  → extracted candidate text
+  → local Nomic `search_query` vector
+  → Qdrant top-K active ESCO roles
+  → field-level response plan
+  → formatted role suggestions
   → human reviewer
 ```
 
-## Evaluation before live candidate processing
+## Current evaluation boundary
 
-Use a dedicated applications mailbox with consented test submissions. Each test should assert that:
-
-- an AI/RAG profile retrieves AI/data-related occupations;
-- role title mismatch does not prevent a relevant semantic match;
-- missing essential skills are shown as gaps, not invented;
-- only retrieved role IDs occur in the final answer;
-- protected attributes never enter the retrieval text or score.
+This prototype validates the controlled end-to-end workflow. Formal role-relevance metrics require
+a labelled candidate-to-role evaluation set and human-review protocol; they are the next
+evaluation step, not a performance claim of the current demonstration.

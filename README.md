@@ -17,18 +17,19 @@ as a production hiring decision system.
   submissions label.
 - Encrypted local SQLite storage for Gmail OAuth token data. Tokens, OAuth client files, local
   vector databases, and generated data are excluded from Git.
-- A LangGraph query-processing slice that turns a terminal recruiter command into a validated
-  `MatchRequest` before any candidate-data tool is permitted to run.
+- A LangGraph workflow that validates a recruiter request, retrieves bounded candidate
+  submissions, embeds candidate text, retrieves active ESCO roles, and returns formatted results.
 
 ## Deliberate workflow boundary
 
 ```text
-Recruiter connects an applications mailbox once
-  → LangGraph validates the recruiter request
+Recruiter request
+  → input guardrails and validated request
+  → secure Gmail authorization when no local connection exists
   → bounded candidate-submission tool fetches approved messages
   → candidate text is extracted
-  → a later LangGraph node constructs a candidate query profile
-  → Nomic query embedding searches active ESCO roles in Qdrant
+  → Nomic candidate embedding searches active ESCO roles in Qdrant
+  → LLM response planning and deterministic formatting
   → a human reviews grounded role suggestions
 ```
 
@@ -60,7 +61,7 @@ python scripts/generate_local_embeddings.py --device cpu --batch-size 4
 python scripts/load_esco_vectors_to_qdrant.py
 python scripts/inspect_esco_vector_similarity.py
 
-# Validate a recruiter command through the first LangGraph slice.
+# Run the complete local LangGraph workflow.
 python scripts/run_query_workflow.py "Process the latest five candidate submissions"
 ```
 

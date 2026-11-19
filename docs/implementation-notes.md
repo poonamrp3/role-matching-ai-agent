@@ -86,21 +86,6 @@ truth for filters, evidence, and later explanation.
 | Relations with missing skill definitions | 0 |
 | Roles without skill relations | 0 |
 
-### Interview explanation
-
-> “I began with a deterministic normalization layer because ESCO already provides an
-> authoritative occupation-to-skill taxonomy. Rather than ask an LLM to infer relationships
-> that the dataset explicitly defines, I joined records through stable URIs and preserved the
-> essential-versus-optional distinction. This gives the later RAG system a reproducible and
-> auditable source of truth. I reserve LLM use for ambiguous unstructured inputs, where it
-> proposes a schema mapping that is then validated before entering the index.”
-
-### Current boundary
-
-This stage does **not** yet create chunks, embeddings, a vector-database collection, candidate
-profiles, Gmail integration, or LLM calls. Those are separate stages to document after they are
-implemented.
-
 ## Stage 2 — Retrieval-document design and chunking
 
 ### Goal
@@ -114,20 +99,13 @@ matching query needs.
 Use **one complete ESCO occupation as one retrieval document**. Each document contains the role
 title, alternative titles, description, essential skills, and optional skills.
 
-The normalized role documents were measured before this decision:
+I checked the role-document lengths against a 1,200-word chunking threshold. Every ESCO role was
+substantially shorter than that threshold, so chunking was not necessary. Each role is already a
+small, self-contained unit in which the title, description, and required skills belong together.
+Keeping the full role as one retrieval document preserves that context during semantic search.
 
-| Measure | Result |
-|---|---:|
-| Minimum length | 63 words |
-| Median length | 211 words |
-| 95th percentile | 412 words |
-| Maximum length | 674 words |
-| Roles over 1,200 words | 0 |
-
-Because all roles are well below 1,200 words, splitting them now would weaken retrieval by
-separating a role description from its required skills. Section chunking remains a future option
-only for longer organization-specific role descriptions or if retrieval evaluation reveals a
-precision problem.
+Section chunking can be introduced later if organization-specific role descriptions become much
+longer or retrieval evaluation shows that it improves precision.
 
 ### Transformation
 
@@ -170,16 +148,15 @@ a hosted API or sending role data outside the local machine.
 - `data/embeddings/esco_embedding_manifest.json`: model identity, revision, dimensions, token
   check, batch size, input fingerprint, and generation time.
 
-The vectors remain outside a vector database until the next stage. The manifest is essential:
+The vectors are then loaded into Qdrant in the next stage. The manifest is essential:
 vectors produced with a different model, dimension, prefix, or preprocessing rule are not
 directly comparable and must not be mixed in the same collection.
 
-## Stage 4 — Vector-database design (prepared)
+## Stage 4 — Vector-database ingestion and retrieval
 
-Qdrant will store the Stage 3 vectors in a local persistent collection named `esco_roles_v1`.
-The collection will use 512-dimensional cosine vectors and payload metadata containing the role
-identity, ESCO source/version, skills, and content fingerprint. The collection is intentionally
-not created until the complete Stage 3 vector matrix is available.
+Qdrant stores the Stage 3 vectors in a local persistent collection named `esco_roles_v1`. The
+collection uses 512-dimensional cosine vectors and payload metadata containing the role identity,
+ESCO source/version, skills, and content fingerprint.
 
 ### Stage 4.1 — Vector ingestion
 
@@ -190,20 +167,34 @@ document ID after verifying that both the documents and vectors are identical, p
 unique points.
 
 Every point has `record_type: taxonomy_reference` and `index_status: active` in its payload.
-Queries will filter to active points. Here, active means included in the current ESCO reference
-index; it is not an assertion that a real-world vacancy is open.
+The role-retrieval node filters to active points. Here, active means included in the current ESCO
+reference index; it is not an assertion that a real-world vacancy is open.
 
-## Stage 5 — Query orchestration design (prepared)
+## Stage 5 — Query orchestration and recruiter UI
 
-The query pipeline will use LangGraph as the backend control plane. It will control Gmail scope,
-schema validation, Nomic query embedding, Qdrant retrieval, deterministic evidence ranking, and
-grounded explanation. A future chat UI is optional and does not control the workflow.
+LangGraph is the backend control plane for the completed query workflow. It controls input
+guardrails, request validation, Gmail scope, candidate-text extraction, local Nomic embedding,
+active-role retrieval in Qdrant, response planning, and deterministic result formatting. The Vue
+UI is a client of this workflow; it does not decide tool order or data scope.
+
+```text
+Recruiter request
+→ query processing and guardrails
+→ Gmail connection check or secure OAuth authorization
+→ bounded Gmail retrieval
+→ candidate-text extraction
+→ Nomic candidate embedding
+→ Qdrant active-role retrieval
+→ LLM response planning
+→ deterministic result formatting
+→ recruiter UI
+```
 
 ## Stage 5.1 — Candidate-submission tool boundary
 
-The first query-pipeline component is a provider-independent `CandidateSubmissionTool` contract.
-It exposes a bounded listing operation and a separate extraction operation. This establishes the
-data-access boundary before workflow orchestration or LLM processing.
+The query pipeline uses a provider-independent `CandidateSubmissionTool` contract. It exposes a
+bounded listing operation and a separate extraction operation. The Gmail implementation follows
+that contract, so LangGraph remains independent of Gmail-specific API details.
 
-A future Gmail adapter will implement the same contract, so LangGraph will not need to know
-whether the current source is a local fixture or Gmail.
+The Gmail adapter retrieves only messages from the configured `CandidateSubmissions` label and
+never accepts an arbitrary mailbox search from recruiter text.

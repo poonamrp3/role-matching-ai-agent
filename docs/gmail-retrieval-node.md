@@ -13,6 +13,5 @@ Its state output contains only submission references:
 - received time; and
 - subject.
 
-It does not read email bodies or attachments. Date and attachment filters are deliberately
-rejected rather than silently ignored; they will be implemented with a future filter-aware version
-of this same bounded tool.
+It does not read email bodies or attachments. Validated date and attachment filters are converted
+into the bounded Gmail query by the tool; raw recruiter text is never used as Gmail query syntax.
