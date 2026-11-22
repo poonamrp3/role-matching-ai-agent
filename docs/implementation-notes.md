@@ -30,7 +30,7 @@ into a consistent internal role-document format that is ready for further proces
 | Alias parsing | Split ESCO alternative labels on line breaks | Makes aliases searchable and usable as structured metadata. |
 | Skill classification | Use ESCO `relationType` to separate `essential` and `optional` skills | Preserves the source taxonomy's explicit distinction. |
 | Deduplication and stable sorting | Deduplicate labels and sort case-insensitively | Gives repeatable output across runs. |
-| Retrieval-text construction | Combine title, aliases, description, essential skills, and optional skills into `index_text` | Creates an embedding-ready text view while retaining structured fields. |
+| Embedding-text preparation | Combine title, aliases, description, essential skills, and optional skills into `index_text` | Builds the text sent to the embedding model while retaining structured fields. |
 
 ### Why deterministic processing is stronger here
 
@@ -86,36 +86,34 @@ truth for filters, evidence, and later explanation.
 | Relations with missing skill definitions | 0 |
 | Roles without skill relations | 0 |
 
-## Stage 2 — Retrieval-document design and chunking
+## Stage 2 — Search-ready role profiles and chunking
 
 ### Goal
 
-Create the exact text units that will later be embedded and searched. A retrieval document is
-not merely a raw CSV row: it is a deliberately constructed semantic unit with the information a
-matching query needs.
+Prepare the exact text units that will later be converted into vectors and searched. A
+search-ready role profile is not merely a raw CSV row: it is a prepared role description with the
+title, description, and skills that the matching query needs.
 
 ### Decision made
 
-Use **one complete ESCO occupation as one retrieval document**. Each document contains the role
-title, alternative titles, description, essential skills, and optional skills.
+Use **one complete ESCO occupation as one search-ready role profile**. Each profile contains the
+role title, alternative titles, description, essential skills, and optional skills.
 
-I checked the role-document lengths against a 1,200-word chunking threshold. Every ESCO role was
-substantially shorter than that threshold, so chunking was not necessary. Each role is already a
-small, self-contained unit in which the title, description, and required skills belong together.
-Keeping the full role as one retrieval document preserves that context during semantic search.
-
-Section chunking can be introduced later if organization-specific role descriptions become much
-longer or retrieval evaluation shows that it improves precision.
+Chunking is enabled in `scripts/build_retrieval_documents.py`. The default setting splits roles
+into labelled chunks of at most 350 words. Every chunk keeps the role title and section labels so
+it still has context when embedded. Pass `--max-words-per-chunk 0` only when creating an
+unchunked baseline for comparison. Use the embedding model's token check as the final safeguard
+against inputs that are too long.
 
 ### Transformation
 
 ```text
 Normalized ESCO role record
   → labelled embedding text
-  → retrieval document with a stable parent-role reference
+  → search-ready role profile with a stable parent-role reference
 ```
 
-The new retrieval document holds `document_id`, `parent_role_id`, `chunk_index`, `chunk_type`,
+The new search-ready role profile holds `document_id`, `parent_role_id`, `chunk_index`, `chunk_type`,
 `embedding_text`, a SHA-256 content fingerprint, and structured metadata. The fingerprint lets a
 later indexer detect documents whose text has changed and needs re-embedding.
 
@@ -130,13 +128,15 @@ later indexer detect documents whose text has changed and needs re-embedding.
 
 ### Goal
 
-Convert each Stage 2 retrieval document into a fixed-length numerical vector, without requiring
+Convert each Stage 2 search-ready role profile into a fixed-length numerical vector, without requiring
 a hosted API or sending role data outside the local machine.
 
 ### Model and embedding policy
 
 - Model: `nomic-ai/nomic-embed-text-v1.5` running locally on CPU.
-- Input prefix: `search_document:` because ESCO roles are index documents, not user queries.
+- Input prefixes: `search_document:` before stored role profiles, and `search_query:` before a
+  candidate profile at search time. These are model instructions required by Nomic to distinguish
+  the stored text from the text used to find it.
 - Vector size: 512 dimensions using the model's Matryoshka representation.
 - Post-processing: layer normalization, truncation to 512 dimensions, then L2 normalization.
 
@@ -154,15 +154,23 @@ directly comparable and must not be mixed in the same collection.
 
 ## Stage 4 — Vector-database ingestion and retrieval
 
-Qdrant stores the Stage 3 vectors in a local persistent collection named `esco_roles_v1`. The
-collection uses 512-dimensional cosine vectors and payload metadata containing the role identity,
-ESCO source/version, skills, and content fingerprint.
+Qdrant stores the Stage 3 vectors in a local persistent collection named `esco_roles_v1`. A
+collection is like a named database table for vectors plus their metadata. The data is persisted
+under `data/qdrant/` on disk; the operating system may cache active data in RAM for speed, but it
+is not RAM-only. The collection uses 512-dimensional vectors compared with cosine similarity and
+payload metadata containing the role identity, ESCO source/version, skills, and content fingerprint.
+
+The loader declares a keyword payload index for `index_status`. In embedded Qdrant local mode,
+that payload index has no effect and the current small collection uses exact vector search rather
+than an HNSW segment. This is acceptable for the 3,039-role prototype. A future Qdrant Server
+deployment can use payload indexes and an HNSW vector index, a graph structure that speeds up
+approximate nearest-neighbour search at larger scale.
 
 ### Stage 4.1 — Vector ingestion
 
 The completed embedding matrix is loaded into a persistent local Qdrant collection named
 `esco_roles_v1`. The ingestion loader validates the vector matrix and maps every vector back to a
-retrieval document and canonical ESCO role. It removes four exact source duplicates by stable
+search-ready role profile and canonical ESCO role. It removes four exact source duplicates by stable
 document ID after verifying that both the documents and vectors are identical, producing 3,039
 unique points.
 

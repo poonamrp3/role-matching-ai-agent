@@ -95,6 +95,14 @@ def point_id(document_id: str) -> str:
     return str(uuid.uuid5(uuid.NAMESPACE_URL, document_id))
 
 
+def display_path(path: Path) -> str:
+    """Keep project manifests portable while allowing an external local storage path."""
+    try:
+        return str(path.resolve().relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path.resolve())
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--vectors", type=Path, default=DEFAULT_VECTORS)
@@ -179,9 +187,10 @@ def main() -> None:
     vector_sha256 = hashlib.sha256(args.vectors.read_bytes()).hexdigest()
     manifest = {
         "collection": args.collection,
-        "storage_path": str(args.storage_path.relative_to(PROJECT_ROOT)),
+        "storage_path": display_path(args.storage_path),
         "distance": "cosine",
         "vector_dimensions": 512,
+        "vector_index": "embedded Qdrant local mode; inspect indexed_vectors_count before assuming HNSW is active",
         "input_vector_rows": len(document_ids),
         "indexed_unique_roles": len(records),
         "exact_source_duplicates_dropped": duplicates_dropped,

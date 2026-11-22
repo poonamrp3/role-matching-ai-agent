@@ -36,6 +36,15 @@ For ESCO, `index_status: active` means the reference role is included in the cur
 index; it does not claim an employer has an open vacancy. Future organization job postings will
 need separate `posting_status`, `posted_at`, and `expires_at` fields.
 
+## Vector and payload indexes
+
+The loader declares a keyword payload index for `index_status`. Embedded Qdrant local mode reports
+that payload indexes have no effect, and the present 3,039-role prototype has no HNSW vector
+segment (`indexed_vectors_count` is zero), so it uses exact vector search. This is acceptable at
+the current scale. For a larger deployment, run Qdrant Server and configure its HNSW and payload
+indexes; HNSW is a graph-based approximate-nearest-neighbour index that speeds up similarity
+search as the collection grows.
+
 ## Run
 
 ```bash

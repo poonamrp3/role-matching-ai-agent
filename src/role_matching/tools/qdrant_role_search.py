@@ -56,21 +56,28 @@ class QdrantRoleSearchTool:
         client = QdrantClient(path=str(self.storage_path))
         if not client.collection_exists(self.collection):
             raise RuntimeError(f"Qdrant collection '{self.collection}' does not exist")
+        # A chunked role may have several vectors. Over-fetch, then retain only the
+        # best-scoring chunk for each parent role so results remain distinct roles.
         points = client.query_points(
             collection_name=self.collection,
             query=query_vector.tolist(),
             query_filter=Filter(
                 must=[FieldCondition(key="index_status", match=MatchValue(value="active"))]
             ),
-            limit=limit,
+            limit=limit * 8,
             with_payload=True,
         ).points
         results: list[RoleSearchResult] = []
+        seen_role_ids: set[str] = set()
         for point in points:
             payload = point.payload or {}
+            role_id = str(payload["parent_role_id"])
+            if role_id in seen_role_ids:
+                continue
+            seen_role_ids.add(role_id)
             results.append(
                 RoleSearchResult(
-                    role_id=str(payload["parent_role_id"]),
+                    role_id=role_id,
                     title=str(payload["title"]),
                     cosine_similarity=float(point.score),
                     description=str(payload.get("description", "")),
@@ -78,6 +85,8 @@ class QdrantRoleSearchTool:
                     optional_skills=list(payload.get("optional_skills", [])),
                 )
             )
+            if len(results) == limit:
+                break
         return results
 
 
