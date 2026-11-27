@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from role_matching.nomic_embeddings import NomicEmbeddingService
+from role_matching.workflows.nodes.candidate_profile import CandidateProfile, profile_query
 from role_matching.workflows.state import RoleMatchingState
 
 
@@ -26,18 +27,31 @@ def candidate_embedding_node(state: RoleMatchingState) -> dict[str, Any]:
 
     service = NomicEmbeddingService()
     vectors: list[dict[str, Any]] = []
+    baseline_vectors: list[dict[str, Any]] = []
+    profiles = {str(item["submission_id"]): item["profile"]
+                for item in state.get("candidate_profiles", [])}
     summaries: list[dict[str, Any]] = []
     errors: list[dict[str, str]] = []
     for document in documents:
         submission_id = str(document["submission_id"])
         try:
+            if state.get("retrieval_mode") == "baseline":
+                embedding = service.embed_query(str(document["candidate_text"]))
+                vectors.append({"submission_id": submission_id, "vector": embedding.vector.tolist()})
+                summaries.append({"submission_id": submission_id, "vector_dimensions": len(embedding.vector),
+                                  "vector_norm": round(float((embedding.vector**2).sum() ** 0.5), 6),
+                                  "input_token_count": embedding.token_count,
+                                  "embedding_status": "completed", "query_type": "full_text"})
+                continue
+            structured = profiles.get(submission_id)
+            if structured is None:
+                errors.append({"submission_id": submission_id,
+                               "error": "Validated structured profile is unavailable."})
+                continue
             embedding = service.embed_query(str(document["candidate_text"]))
-            vectors.append(
-                {
-                    "submission_id": submission_id,
-                    "vector": embedding.vector.tolist(),
-                }
-            )
+            baseline_vectors.append({"submission_id": submission_id, "vector": embedding.vector.tolist()})
+            embedding = service.embed_query(profile_query(CandidateProfile.model_validate(structured)))
+            vectors.append({"submission_id": submission_id, "vector": embedding.vector.tolist()})
             summaries.append(
                 {
                     "submission_id": submission_id,
@@ -45,6 +59,7 @@ def candidate_embedding_node(state: RoleMatchingState) -> dict[str, Any]:
                     "vector_norm": round(float((embedding.vector**2).sum() ** 0.5), 6),
                     "input_token_count": embedding.token_count,
                     "embedding_status": "completed",
+                    "query_type": "structured",
                 }
             )
         except Exception as error:
@@ -65,6 +80,7 @@ def candidate_embedding_node(state: RoleMatchingState) -> dict[str, Any]:
 
     return {
         "candidate_vectors": vectors,
+        "baseline_candidate_vectors": baseline_vectors,
         "candidate_embedding_summary": summaries,
         "candidate_embedding_errors": errors,
         "workflow_events": [

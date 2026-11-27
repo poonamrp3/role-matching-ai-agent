@@ -13,6 +13,7 @@ class RoleMatchingState(TypedDict, total=False):
     """
 
     raw_prompt: str
+    retrieval_mode: Literal["baseline", "structured"]
     llm_connection_ok: bool
     available_models: list[str]
     query_intent: dict[str, Any]
@@ -23,10 +24,15 @@ class RoleMatchingState(TypedDict, total=False):
     candidate_documents: list[dict[str, Any]]
     candidate_extraction_summary: list[dict[str, Any]]
     candidate_extraction_errors: list[dict[str, str]]
+    candidate_profiles: list[dict[str, Any]]
+    candidate_profile_errors: list[dict[str, str]]
     candidate_vectors: list[dict[str, Any]]
+    baseline_candidate_vectors: list[dict[str, Any]]
     candidate_embedding_summary: list[dict[str, Any]]
     candidate_embedding_errors: list[dict[str, str]]
     role_matches: list[dict[str, Any]]
+    baseline_role_matches: list[dict[str, Any]]
+    structured_role_matches: list[dict[str, Any]]
     role_retrieval_errors: list[dict[str, str]]
     response_plan: dict[str, Any]
     response_planning_error: str

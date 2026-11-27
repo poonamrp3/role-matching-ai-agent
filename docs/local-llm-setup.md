@@ -3,8 +3,9 @@
 ## Purpose
 
 The query-processing prototype uses a local, OpenAI-compatible Gemini Web2API endpoint to turn a
-recruiter's command into a structured request. It does not send Gmail message bodies, résumés,
-attachments, OAuth credentials, or vector-store records to that endpoint.
+recruiter's command into a structured request. Candidate profile extraction sends extracted email
+and attachment text to the configured endpoint. A local proxy can forward data to a remote provider;
+verify its data handling and authorization. OAuth credentials and vector-store records are not sent.
 
 ## Configuration
 

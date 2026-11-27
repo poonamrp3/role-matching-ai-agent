@@ -1,7 +1,8 @@
 # Candidate embedding node
 
-`workflows/nodes/candidate_embedding.py` consumes the in-memory candidate text produced by the
-previous node and creates vectors locally with `nomic-ai/nomic-embed-text-v1.5`.
+`workflows/nodes/candidate_embedding.py` creates vectors locally with `nomic-ai/nomic-embed-text-v1.5`.
+It embeds both the original full text for the baseline and a query constructed from the validated
+profile. Profile extraction failure is reported and does not silently fall back to full text.
 
 It uses the query prefix:
 

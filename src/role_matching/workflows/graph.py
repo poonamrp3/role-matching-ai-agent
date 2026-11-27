@@ -7,7 +7,8 @@ added here without turning this file into an implementation dump.
 Current workflow:
 
     START -> query_processing -> gmail_connection -> gmail_retrieval -> candidate_text_extraction
-        -> candidate_embedding -> role_retrieval -> response_planning -> result_formatting -> END
+        -> candidate_profile -> candidate_embedding -> role_retrieval -> response_planning
+        -> result_formatting -> END
 
 Planned successors after query-processing validation:
 
@@ -20,6 +21,7 @@ from __future__ import annotations
 from langgraph.graph import END, START, StateGraph
 
 from role_matching.workflows.nodes.candidate_embedding import candidate_embedding_node
+from role_matching.workflows.nodes.candidate_profile import candidate_profile_node
 from role_matching.workflows.nodes.candidate_text_extraction import candidate_text_extraction_node
 from role_matching.workflows.nodes.gmail_connection import gmail_connection_node
 from role_matching.workflows.nodes.gmail_retrieval import gmail_retrieval_node
@@ -53,7 +55,9 @@ def _route_after_gmail_retrieval(state: RoleMatchingState) -> str:
 def _route_after_candidate_extraction(state: RoleMatchingState) -> str:
     """Only create vectors when at least one candidate yielded usable text."""
 
-    return "candidate_embedding" if state.get("candidate_documents") else "end"
+    if not state.get("candidate_documents"):
+        return "end"
+    return "candidate_embedding" if state.get("retrieval_mode") == "baseline" else "candidate_profile"
 
 
 def _route_after_candidate_embedding(state: RoleMatchingState) -> str:
@@ -80,6 +84,7 @@ def build_role_matching_graph():
     graph.add_node("gmail_connection", gmail_connection_node)
     graph.add_node("gmail_retrieval", gmail_retrieval_node)
     graph.add_node("candidate_text_extraction", candidate_text_extraction_node)
+    graph.add_node("candidate_profile", candidate_profile_node)
     graph.add_node("candidate_embedding", candidate_embedding_node)
     graph.add_node("role_retrieval", role_retrieval_node)
     graph.add_node("response_planning", response_planning_node)
@@ -103,8 +108,9 @@ def build_role_matching_graph():
     graph.add_conditional_edges(
         "candidate_text_extraction",
         _route_after_candidate_extraction,
-        {"candidate_embedding": "candidate_embedding", "end": END},
+        {"candidate_profile": "candidate_profile", "candidate_embedding": "candidate_embedding", "end": END},
     )
+    graph.add_edge("candidate_profile", "candidate_embedding")
     graph.add_conditional_edges(
         "candidate_embedding",
         _route_after_candidate_embedding,

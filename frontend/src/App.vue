@@ -174,6 +174,11 @@ async function runWorkflow() {
               {{ message.result.assistant_message }}
             </p>
 
+            <div v-if="message.result.comparison_available" class="comparison-action">
+              <a class="comparison-button" href="/api/comparison" target="_blank" rel="noopener">View baseline comparison</a>
+            </div>
+            <p v-if="message.result.results_file_error" class="warning">{{ message.result.results_file_error }}</p>
+
             <section v-if="message.result.response_type === 'follow_up'" class="follow-up-response">
               <p>{{ message.result.assistant_message }}</p>
               <div class="follow-up-role">

@@ -1,7 +1,6 @@
 """One development-only local LLM client shared by workflow nodes.
 
-Only recruiter commands should be sent through this client at this stage.  Gmail message bodies,
-résumés, attachments, OAuth tokens, and Qdrant payloads remain inside the application.
+Candidate documents are sent for structured extraction; a local proxy may forward data elsewhere.
 """
 
 from __future__ import annotations

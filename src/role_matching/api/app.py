@@ -6,17 +6,21 @@ candidate vectors, Gmail OAuth material, and local database credentials never le
 
 from __future__ import annotations
 
+import json
 import os
+import tempfile
 import threading
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
 from role_matching.tools.gmail_candidate_submissions import GmailCredentialStore
+from role_matching.tools.retrieval_comparison import make_report
 from role_matching.workflows.graph import build_role_matching_graph
 
 
@@ -44,6 +48,7 @@ _CONVERSATIONS: dict[str, dict[str, Any]] = {}
 GMAIL_CONNECTION_ID_ENV = "GMAIL_CONNECTION_ID"
 GMAIL_CLIENT_SECRETS_PATH_ENV = "GMAIL_OAUTH_CLIENT_SECRETS_PATH"
 DEFAULT_GMAIL_CONNECTION_ID = "demo-applications-mailbox"
+OUTPUT_DIR = Path(__file__).resolve().parents[3] / "output"
 _gmail_connection_lock = threading.Lock()
 _gmail_connection_job: dict[str, str | int | None] = {
     "status": "idle",
@@ -281,6 +286,7 @@ def safe_workflow_response(result: dict[str, Any]) -> dict[str, Any]:
         "gmail_connection_ok": result.get("gmail_connection_ok"),
         "submission_references": result.get("submission_references", []),
         "candidate_extraction_summary": result.get("candidate_extraction_summary", []),
+        "candidate_profile_errors": result.get("candidate_profile_errors", []),
         "candidate_embedding_summary": result.get("candidate_embedding_summary", []),
         "formatted_results": result.get("formatted_results", []),
         "role_retrieval_errors": result.get("role_retrieval_errors", []),
@@ -289,9 +295,61 @@ def safe_workflow_response(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def save_structured_results(result: dict[str, Any], output_dir: Path) -> str | None:
+    """Save role-only comparison data for successful structured UI runs."""
+    matches = result.get("structured_role_matches", [])
+    if not matches:
+        return None
+    fields = ("role_id", "title", "cosine_similarity", "description", "essential_skills", "optional_skills")
+    safe_matches = [
+        {"submission_id": str(candidate["submission_id"]), "roles": [
+            {key: role[key] for key in fields if key in role}
+            for role in candidate.get("roles", [])
+        ]}
+        for candidate in matches
+    ]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = output_dir / "structured-results.json"
+    descriptor, temp_path = tempfile.mkstemp(prefix=".structured-results-", suffix=".tmp", dir=output_dir)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as file:
+            json.dump({"retrieval_mode": "structured", "structured_role_matches": safe_matches}, file, indent=2)
+            file.write("\n")
+        os.replace(temp_path, path)
+    finally:
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+    return str(path)
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "RoleMatch AI local API"}
+
+
+@app.get("/api/comparison", response_class=HTMLResponse)
+def comparison_report() -> HTMLResponse:
+    """Generate and open the saved HTML report from both result files."""
+    try:
+        baseline = json.loads((OUTPUT_DIR / "baseline-results.json").read_text(encoding="utf-8"))
+        structured = json.loads((OUTPUT_DIR / "structured-results.json").read_text(encoding="utf-8"))
+        report = make_report(baseline, structured)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="The baseline or structured results file is missing. Run the workflow first.")
+    except (ValueError, KeyError, TypeError):
+        raise HTTPException(status_code=400, detail="Cannot compare these results. Check that the saved baseline and this run contain the same candidate submissions.")
+    try:
+        descriptor, temp_path = tempfile.mkstemp(prefix=".retrieval-comparison-", suffix=".tmp", dir=OUTPUT_DIR)
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as file:
+                file.write(report)
+            os.replace(temp_path, OUTPUT_DIR / "retrieval-comparison.html")
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+    except OSError:
+        raise HTTPException(status_code=500, detail="The HTML comparison could not be saved.")
+    return HTMLResponse(report, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/gmail/connection")
@@ -333,6 +391,13 @@ async def run_workflow(request: WorkflowRequest) -> dict[str, Any]:
         }
     )
     response = safe_workflow_response(result)
+    if result.get("structured_role_matches"):
+        try:
+            response["results_file"] = save_structured_results(
+                result, Path(__file__).resolve().parents[3] / "output")
+            response["comparison_available"] = True
+        except OSError:
+            response["results_file_error"] = "Results were displayed, but the JSON file could not be saved."
     if response["response_type"] == "gmail_connection_required":
         connection = _begin_gmail_connection()
         response["assistant_message"] = str(connection["message"])
