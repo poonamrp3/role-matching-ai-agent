@@ -18,7 +18,8 @@ as a production hiring decision system.
 - Encrypted local SQLite storage for Gmail OAuth token data. Tokens, OAuth client files, local
   vector databases, and generated data are excluded from Git.
 - A LangGraph workflow that validates a recruiter request, retrieves bounded candidate
-  submissions, embeds candidate text, retrieves active ESCO roles, and returns formatted results.
+  submissions, extracts a structured candidate profile, embeds it, retrieves active ESCO roles,
+  and returns formatted results. A full-text baseline mode is also available for comparison.
 
 ## Deliberate workflow boundary
 
@@ -28,6 +29,7 @@ Recruiter request
   → secure Gmail authorization when no local connection exists
   → bounded candidate-submission tool fetches approved messages
   → candidate text is extracted
+  → LLM extracts a structured skills and experience profile
   → Nomic candidate embedding searches active ESCO roles in Qdrant
   → LLM response planning and deterministic formatting
   → a human reviews grounded role suggestions
@@ -35,6 +37,8 @@ Recruiter request
 
 The system must not make employment decisions, treat cosine similarity as a hiring probability,
 or use protected personal attributes for retrieval or ranking.
+Structured profile extraction sends candidate text to the configured LLM endpoint; a local proxy
+may forward the text to a remote provider. Check the provider's data handling before using it.
 
 ## Repository layout
 

@@ -46,3 +46,7 @@ Each successful structured UI run replaces that file. The UI's comparison button
 report using `output/baseline-results.json` and the latest structured results. It checks that the
 submission IDs match and reports an error if they do not. Each click also saves or replaces
 `output/retrieval-comparison.html` and opens that styled report in a new browser tab.
+
+`src/role_matching/tools/retrieval_comparison.py` builds the comparison table and HTML. Both the
+UI's API endpoint and the optional `scripts/compare_retrieval_results.py` command use this same
+report generator. It compares recorded rankings; it does not retrieve or rerank occupations.

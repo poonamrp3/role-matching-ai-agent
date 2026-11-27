@@ -12,6 +12,7 @@ Recruiter request
   → Gmail connection check or secure OAuth authorization
   → bounded Gmail retrieval
   → candidate-text extraction
+  → LLM extracts and validates a structured candidate profile
   → local Nomic candidate embedding
   → Qdrant active-role retrieval
   → LLM response planning from safe retrieval evidence
@@ -27,8 +28,9 @@ inspectable backend flow that enforces Gmail scope, retrieval limits, validation
 boundaries regardless of prompt wording.
 
 LangGraph makes these transitions visible and lets deterministic nodes run before or after LLM
-nodes. The LLM does not receive Gmail credentials, raw candidate text, candidate vectors, or
-unrestricted Qdrant payloads.
+nodes. Structured profile extraction sends candidate text to the configured LLM endpoint. The
+endpoint may forward it to a remote provider. Gmail credentials, candidate vectors and unrestricted
+Qdrant payloads are not sent to the LLM.
 
 ## Shared workflow state
 
@@ -39,7 +41,10 @@ match_request
 gmail_connection_ok
 submission_references       # message ID, subject, and received time only
 candidate_documents         # process memory only; never returned by the API
+candidate_profiles          # process memory only; never returned by the API
 candidate_vectors           # process memory only; never returned by the API
+baseline_role_matches
+structured_role_matches
 role_matches
 response_plan
 formatted_results
@@ -53,7 +58,8 @@ workflow_events
 | `query_processing` | LLM + schema validation | Converts the recruiter prompt into a bounded `MatchRequest` | Prompt injection and unsupported actions are stopped before tool access. |
 | `gmail_connection` | Deterministic service | Loads and refreshes the encrypted local Gmail credential | If no connection exists, the API starts secure browser authorization and returns a natural-language response. |
 | `gmail_retrieval` | Deterministic service | Retrieves up to five references from the fixed submissions label | Date and attachment filters come only from validated request fields. |
-| `candidate_text_extraction` | Deterministic service | Extracts approved email and supported attachment text | Raw text stays in backend memory. |
+| `candidate_text_extraction` | Deterministic service | Extracts approved email and supported attachment text | The backend keeps the extracted text in workflow memory. |
+| `candidate_profile` | LLM + schema validation | Extracts skills and experience into a structured profile | Candidate text is sent to the configured LLM; schema validation does not verify extracted facts. |
 | `candidate_embedding` | Deterministic service | Creates a local Nomic `search_query` vector | The same embedding model and normalization policy are used as the role index. |
 | `role_retrieval` | Deterministic service | Searches active ESCO role vectors in Qdrant | Cosine similarity ranks retrieval results; it is not a hiring score. |
 | `response_planning` | LLM + schema validation | Chooses which safe fields to show for the recruiter request | Receives only safe role titles, field availability, and the validated request. |
@@ -62,14 +68,16 @@ workflow_events
 ## Tool policy
 
 The LLM does not freely select tools. Gmail access, embedding, vector search, and output
-formatting are graph-controlled operations. The first LLM call interprets the recruiter request;
-the second LLM call plans presentation using safe post-retrieval evidence only.
+formatting are graph-controlled operations. LLM calls interpret the recruiter request, extract a
+structured candidate profile and plan presentation. The presentation-planning call receives only
+the limited post-retrieval context described above. Baseline mode bypasses profile extraction.
 
 ## Query-time sequence
 
 ```text
 candidate email and supported attachment
   → extracted candidate text
+  → LLM extracts a structured skills and experience profile
   → local Nomic `search_query` vector
   → Qdrant top-K active ESCO roles
   → field-level response plan

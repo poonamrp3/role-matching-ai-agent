@@ -9,4 +9,6 @@ the in-memory `candidate_documents` state field for the immediate next local nod
 checkpointer is configured, and the terminal runner deliberately omits that field. Terminal output
 shows only submission ID, attachment count, extracted character count, and extraction status.
 
-The next node will consume that in-memory text to create local Nomic query embeddings.
+For structured retrieval, the next node sends this text to the configured LLM endpoint to extract
+a skills and experience profile. The embedding node then creates the local Nomic query vector from
+that profile. In baseline mode, the text goes directly to the embedding node instead.
